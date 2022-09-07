@@ -190,12 +190,12 @@ M$Parameters = {
 
 LVLQKin := Block[{mu,nu,cc1}, - 1/2 * (DC[Ubar[mu,cc1], nu] - DC[Ubar[nu,cc1], mu]) * (DC[U[mu,cc1], nu] - DC[U[nu,cc1], mu]) ];
 
-LVLQF :=  Block[{ff1,ff2,ff3,s1,s2,s3,cc1,mu},
+LVLQF :=  Block[{s1,s2,s3,cc1,mu},
                  gU/(Sqrt[2]) * VLQ[mu,cc1] *
                  (
-                   betaL[ff1,ff2]  * newCKM[ff3,ff1] * uqbar[s1,ff3,cc1] * Ga[mu,s1,s2] * ProjM[s2,s3] * vl[s3,ff2] +
-                   betaL[ff1,ff2]  * dqbar[s1,ff1,cc1] * Ga[mu,s1,s2] * ProjM[s2,s3] *  l[s3,ff2] +
-                   betaRd[ff1,ff2] * dqbar[s1,ff1,cc1] * Ga[mu,s1,s2] * ProjP[s2,s3] *  l[s3,ff2]
+                   betaL[3,3]  * newCKM[3,3] * uqbar[s1,3,cc1] * Ga[mu,s1,s2] * ProjM[s2,s3] * vl[s3,3] +
+                   betaL[3,3]  * dqbar[s1,3,cc1] * Ga[mu,s1,s2] * ProjM[s2,s3] *  l[s3,3] +
+                   betaRd[3,3] * dqbar[s1,3,cc1] * Ga[mu,s1,s2] * ProjP[s2,s3] *  l[s3,3]
                  )
           ];
 
