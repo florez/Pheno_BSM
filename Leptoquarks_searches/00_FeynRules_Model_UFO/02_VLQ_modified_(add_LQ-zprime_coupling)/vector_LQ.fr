@@ -2,14 +2,14 @@
 (* *****                                                               ***** *)
 (* *****  FeynRules model file: vector_LQ                              ***** *)
 (* *****  Authors: M. Baker, J. Fuentes-Martin, M. König, G. Isidori   ***** *)
-(* *****                                                               ***** *)
+(* *****  Edited: by Cristian R.                                       ***** *)
 (* ************************************************************************* *)
 
 (* ************************** *)
 (* *****  Information   ***** *)
 (* ************************** *)
 
-M$ModelName = "vector_LQ";
+M$ModelName = "Mod_VLQ";
 
 M$Information = {Authors      -> {"M. Baker", "J. Fuentes-Martin", "M. Koenig", "G. Isidori"},
                  Version      -> "1.1",
@@ -76,7 +76,6 @@ M$Parameters = {
     OrderBlock       -> 1,
 	Description      -> "Overall LQ coupling strength"
   },
-
   betaL33 == {
     ParameterType    -> External,
     Value            -> 1.0,
@@ -136,6 +135,15 @@ M$Parameters = {
     OrderBlock       -> 7,
     Description      -> "Non-minimal LQ coupling to B gauge boson"
   },
+  KappaZp == {
+	ParameterType    -> External,
+	Value            -> 2.42,
+	InteractionOrder -> {NP,1}, 
+	TeX              -> Subscript[\[Kappa],Z],
+	BlockName        -> NPLQCOUP,
+    OrderBlock       -> 8,
+	Description      -> "LQ coupling strength to Zp"
+  },
 
   (* Internal Parameters *)
   betaL == {
@@ -194,5 +202,5 @@ LVLQF :=  Block[{ff1,ff2,ff3,s1,s2,s3,cc1,mu},
 LVLQG :=  Block[{cc1,cc2,aa1,mu,nu},
                - I * gs * (1 - kappaU) * Ubar[mu,cc1] * T[aa1,cc1,cc2] * U[nu,cc2] * FS[G,mu,nu,aa1] - I * 2/3 * g1 * (1 - kappaUtilde) * Ubar[mu,cc1] * U[nu,cc1] * FS[B,mu,nu]
           ];
-
-LVLQ := LVLQKin + LVLQF + HC[LVLQF] + LVLQG;
+LVLQZp := Block[{cc1,mu,nu}, - I *KappaZp* Ubar[mu,cc1] * U[nu,cc1] * FS[Zp,mu,nu]]; 
+LVLQ := LVLQKin + LVLQF + HC[LVLQF] + LVLQG +LVLQZp;
