@@ -9,7 +9,7 @@
 (* *****  Information   ***** *)
 (* ************************** *)
 
-M$ModelName = "Mod_VLQ";
+M$ModelName = "Mod2_VLQ";
 
 M$Information = {Authors      -> {"M. Baker", "J. Fuentes-Martin", "M. Koenig", "G. Isidori"},
                  Version      -> "1.1",
