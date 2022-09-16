@@ -5,7 +5,13 @@ from pathlib import Path
 from ROOT import TChain
 
 URL = "https://media.githubusercontent.com/media/cfrc2694/Pheno_BSM/main/SimulationsPaths.csv"
-DEF_PATHS="SimulationsPaths.csv"
+
+def parent_lib_path():
+    name="Pheno_BSM"
+    import sys
+    return os.path.join(sys.path[0].split(name)[0],name,"SimulationsPaths.csv")
+    
+DEF_PATHS=parent_lib_path()
 
 class DelphesLoader():
     def __init__(self, name_signal, path=DEF_PATHS):
@@ -35,12 +41,15 @@ class DelphesLoader():
         print(load, flush=True)
 
     def _read_simulation_path(self, path):
+        temp=False
         if not (os.path.exists(path)):
+            temp=True
             print(f"sim path {path} dont exist", flush=True)
             path = os.path.join(os.getcwd(),DEF_PATHS)
             print(f"Downloading default File in {path}.", flush=True)
             if (os.path.exists(path)): os.remove(path)
             response = wget.download(URL, path)
+         
         
         # Reading diccionary path
         data = {}
@@ -50,6 +59,8 @@ class DelphesLoader():
                 if ( len(row)!=0 ):
                     name_signal_dict = row.pop(0)
                     data[name_signal_dict] = [*row]
+        if temp :
+            os.remove(path)
         return data
         
     def _get_forest(self,path_to_signal):

@@ -149,4 +149,3 @@ def get_good_leptons(thing,kin_cuts=DEFAULT_CUTS):
         lepton.SetName(f"lep_{{{j}}}")
         j+=1
     return leptons
-
