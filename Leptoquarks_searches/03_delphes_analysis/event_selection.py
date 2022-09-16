@@ -81,7 +81,7 @@ def eventSelection(signal,folder_out):
         cutflow.update({key:{}})
         cutflow[key].update({"xs":signal.xs})
     
-    for i, path_root in enumerate(signal.Forest):
+    for path_root in signal.Forest:
         #if i > 0 : break
         
         tree=TChain("Delphes;1")
