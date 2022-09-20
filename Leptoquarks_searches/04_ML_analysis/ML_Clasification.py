@@ -1,4 +1,5 @@
-from ROOT import TCanvas
+from ROOT import TCanvas, THStack, TH1F, TFile
+from ROOT import kBlue, kRed, kBlack
 from bcml4pheno import bcml_model
 from bsm_ml import *
 from sklearn.model_selection import train_test_split
@@ -39,7 +40,7 @@ part_dic={
 class LQ_Log_Reg(bcml_model):
     def __init__(self,mass,ch,csv_files_path):
         self.mass=mass
-        self.channel=ch
+        self.channels=ch
         self.path=csv_files_path
         self._fit_log_reg_model()
 
@@ -64,34 +65,42 @@ class LQ_Log_Reg(bcml_model):
     def _get_features_by_key(self,key):
         lep_a=part_dic[key][0]
         lep_b=part_dic[key][1]
-        self.features=[
+        features=[
             'MET(GeV)',
             '#phi_{MET}',
             f"Q_{{{lep_a}}}Q_{{{lep_b}}}",
             'light_jets_multiplicity'
         ]
         for particle in part_dic[key]:
-            self.features+=[
+            features+=[
                 f'Energy_{{{particle}}}(GeV)',
                 f'pT_{{{particle}}}(GeV)',
                 f'#phi_{{{particle}}}',
                 f'#eta_{{{particle}}}'
             ]
-        
+        return features
+    
+    def _get_features(self,channels):
+        sets=[set(self._get_features_by_key(channel)) for channel in channels]
+        common_features=sets[0]
+        for set_ in sets:
+            common_features = common_features.intersection(set_)
+        self.features=list(common_features)
+
         
     def _prepare_data(self):
-        self._get_features_by_key(self.channel)
+        self._get_features(self.channels)
         self._get_signal_names()
         self.signal_data=concat_channels(
             self.path,
             self.signal_names,
-            [self.channel],
+            self.channels,
             self.features
         )
         self.bkg_data=concat_channels(
             self.path,
             self.bkg_names,
-            [self.channel],
+            self.channels,
             self.features
         )
         
@@ -123,18 +132,18 @@ class LQ_Log_Reg(bcml_model):
         hs = THStack(name,name)
         colors = [kBlue,kRed,3, 7, 6, kBlack, 2,  9, 1, 43, 97, 38, 3, 7, 6, kBlack, 2, 4, 8]
         hist_dict={}
-        for i, channel in enumerate(channels):
+        for i, channel in enumerate(self.channels):
             h = TH1F(
-                f"{name}_{self.channel}",
-                f"{name}_{self.channel};ML-score;nevents(137/fb)", 
+                f"{name}_{channel}",
+                f"{name};ML-score;nevents(137/fb)", 
                 100, 0.0,1.0
             )
             h.SetLineWidth(1)
             h.SetLineColor(kBlack)
             h.SetFillColor(colors[i])
-            for score in model.predict_proba(concat_channels(self.csv_files_path,[name],[self.channel],self.features)):
+            for score in self.logreg_model.predict_proba(concat_channels(self.path,[name],self.channels,self.features)):
                 h.Fill(score)
-            h.Scale(get_yield(csv_files_path,[name],self.channel)/h.Integral())
+            h.Scale(get_yield(self.path,[name],channel)/h.Integral())
             hist_dict[channel]=h
             hs.Add(h)
         hs.Draw("HIST")
@@ -142,5 +151,15 @@ class LQ_Log_Reg(bcml_model):
         return (name,hist_dict)
     
     def get_discriminator_histograms(self,images_folder):
+        self.logreg_model.save_model(os.path.join(images_folder,"log_reg_model"))
+        def mapping(name):
+            return self._draw_discrtiminator(name,images_folder)
+        self.histograms = dict(map(mapping , self.signal_names + self.bkg_names))
+        
+        f = TFile(os.path.join(images_folder,"Logistic_Regresion.root"),"RECREATE")
+        for signal in self.histograms:
+            h=self.histograms[signal][self.channels[0]]
+            h.Write(h.GetName().removesuffix(f"_{self.channels[0]}"))
+        return self.histograms
         
     
