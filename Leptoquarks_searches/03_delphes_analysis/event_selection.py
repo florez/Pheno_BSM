@@ -1,9 +1,10 @@
 import os
 import time
 import pandas as pd
-
+import subprocess
+from pathlib import Path
 from ROOT import TChain
-
+import subprocess
 def add_parent_lib_path(name="Pheno_BSM"):
     import sys
     sys.path.append(
@@ -22,10 +23,9 @@ from delphes_reader.clasificator import get_good_leptons
 from delphes_reader.clasificator import get_unified
 from delphes_reader.root_analysis import get_kinematics_row
 
-
 #counter
 def count_event(cut_dict,name):
-    if( cut_dict.get(name,-1)==-1):
+    if not(cut_dict.get(name,None)):
         cut_dict.update({name:0})
     cut_dict[name]+=1
     return cut_dict
@@ -54,6 +54,78 @@ def b_sel(selection,b_jets,lep_a,lep_b):
     return string, condition , row
 
 
+
+
+def full_selection(tree,cutflow,results_dict):
+    for event in tree:
+        for key in results_dict.keys():
+            count_event(cutflow[key],"All_events")
+        jets = get_good_jets(event)
+        l_jets=jets['l_jet']
+        b_jets=jets['b_jet']
+        tau_jets=jets['tau_jet']
+
+        MET=get_met(event)
+        row={
+            "MET(GeV)":MET.pt(),
+            "#phi_{MET}":MET.phi(),
+            "light_jets_multiplicity": len(l_jets)
+        }
+        if (len(tau_jets)==0):
+            ##Full-leptonic selection
+            selection="leptonic"
+            leptons=get_good_leptons(event)
+            for key in results_dict.keys(): 
+                if f"_{selection}" in key: 
+                    count_event(
+                        cutflow[key],
+                        "Exactly zero good hadronic taus"
+                    )
+            if not( len(leptons) >= 2 ): continue
+            for key in results_dict.keys(): 
+                if f"_{selection}" in key: 
+                    count_event(
+                        cutflow[key],
+                        "At Least two good leptons"
+                    )
+            lep_a=leptons[0]
+            lep_b=leptons[1]
+        elif (len(tau_jets)==1): 
+            ##Semi-leptonic selection
+            selection="semileptonic"
+            leptons=get_good_leptons(event)
+
+            for key in results_dict.keys(): 
+                if f"_{selection}" in key: 
+                    count_event(
+                        cutflow[key],
+                        "Exactly one good hadronic tau"
+                    )
+            if not( len(leptons) >=1 ): continue
+            for key in results_dict.keys(): 
+                if f"_{selection}" in key: 
+                    count_event(
+                        cutflow[key],
+                        "At Least one good leptons"
+                    )
+            lep_a=tau_jets[0]
+            lep_b=leptons[0]
+        else:
+            selection="hadronic"
+            lep_a=tau_jets[0]
+            lep_b=tau_jets[1]
+            for key in results_dict.keys(): 
+                if f"_{selection}" in key: 
+                    count_event(
+                        cutflow[key],
+                        "At least two good hadronic taus"
+                    )
+        str_a, cond, kin_row = b_sel(selection, b_jets, lep_a, lep_b)
+        if (str_a):
+            row.update(kin_row)
+            count_event(cutflow[str_a],cond)
+            results_dict[str_a]+=[row]
+
 def eventSelection(signal,folder_out):
     start_time = time.time()
 
@@ -80,82 +152,32 @@ def eventSelection(signal,folder_out):
     for key in results_dict.keys():
         cutflow.update({key:{}})
         cutflow[key].update({"xs":signal.xs})
+        
     
     for path_root in signal.Forest:
         #if i > 0 : break
-        
-        tree=TChain("Delphes;1")
-        tree.Add(path_root)
-
-        for event in tree:
-            for key in results_dict.keys():
-                count_event(cutflow[key],"All_events")
-            
-            jets = get_good_jets(event)
-            l_jets=jets['l_jet']
-            b_jets=jets['b_jet']
-            tau_jets=jets['tau_jet']
-            
-            MET=get_met(event)
-            row={
-                "MET(GeV)":MET.pt(),
-                "#phi_{MET}":MET.phi(),
-                "light_jets_multiplicity": len(l_jets)
-            }
-            if (len(tau_jets)==0):
-                ##Full-leptonic selection
-                selection="leptonic"
-                leptons=get_good_leptons(event)
-                for key in results_dict.keys(): 
-                    if f"_{selection}" in key: 
-                        count_event(
-                            cutflow[key],
-                            "Exactly zero good hadronic taus"
-                        )
-                if not( len(leptons) >= 2 ): continue
-                for key in results_dict.keys(): 
-                    if f"_{selection}" in key: 
-                        count_event(
-                            cutflow[key],
-                            "At Least two good leptons"
-                        )
-                lep_a=leptons[0]
-                lep_b=leptons[1]
-            elif (len(tau_jets)==1): 
-                ##Semi-leptonic selection
-                selection="semileptonic"
-                leptons=get_good_leptons(event)
-                
-                for key in results_dict.keys(): 
-                    if f"_{selection}" in key: 
-                        count_event(
-                            cutflow[key],
-                            "Exactly one good hadronic tau"
-                        )
-                if not( len(leptons) >=1 ): continue
-                for key in results_dict.keys(): 
-                    if f"_{selection}" in key: 
-                        count_event(
-                            cutflow[key],
-                            "At Least one good leptons"
-                        )
-                lep_a=tau_jets[0]
-                lep_b=leptons[0]
+        for attempt in range(10):
+            try:
+                cutflow_copy=cutflow.copy()
+                results_dict_copy=results_dict.copy()
+                tree=TChain("Delphes;1")
+                tree.Add(path_root)
+                full_selection(
+                    tree,
+                    cutflow_copy,
+                    results_dict_copy
+                )
+            except RuntimeError as error:
+                if not ("TTree I/O error" == error):
+                    raise Exception("Something was wrong") 
+                print("Reconnecting with Google drive")
+                time.sleep(10)
+                subprocess.call("bash ~/G_Drive_Recon.sh",shell=True)
+                print("Okay, I'm going to try it next...")
             else:
-                selection="hadronic"
-                lep_a=tau_jets[0]
-                lep_b=tau_jets[1]
-                for key in results_dict.keys(): 
-                    if f"_{selection}" in key: 
-                        count_event(
-                            cutflow[key],
-                            "At least two good hadronic taus"
-                        )
-            str_a, cond, kin_row = b_sel(selection, b_jets, lep_a, lep_b)
-            if not (str_a): continue
-            row.update(kin_row)
-            results_dict[str_a]+=[row]
-            count_event(cutflow[str_a],cond)
+                results_dict=results_dict_copy
+                cutflow=cutflow_copy
+                break
     for key in results_dict.keys():
         results_dict[key]=pd.DataFrame.from_records(results_dict[key])
         results_dict[key].to_csv(
@@ -168,7 +190,6 @@ def eventSelection(signal,folder_out):
     print(f"time elapsed: {elapsed} hours.")
     print("%"*60, flush=True)
     return ( signal.name , cutflow )
-    
     
 def get_efficiencies_df(cutflow_dict,folder_out):
     dataframe_dict={}

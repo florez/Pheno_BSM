@@ -1,4 +1,5 @@
 import os
+import re
 import csv
 import wget
 from pathlib import Path
@@ -31,12 +32,8 @@ class DelphesLoader():
         #get the delphes root outputs
         self.Forest = self._get_forest(path_to_signal)
         
-        #get number of events
-        self.nevents=self._get_nevents(self.Forest)
-        
-        load=self.name+" imported!\n"
-        load+=str(len(self.Forest)) + " trees and "
-        load+=str(self.nevents) + " events have been loaded from\n"
+        load=self.name+" imported with\n"
+        load+=str(len(self.Forest)) + " trees!"
         load+=path_to_signal+"\n"
         print(load, flush=True)
 
@@ -62,18 +59,24 @@ class DelphesLoader():
         if temp :
             os.remove(path)
         return data
-        
+    
     def _get_forest(self,path_to_signal):
+        def natural_sort(l): 
+            convert = lambda text: int(text) if text.isdigit() else text.lower()
+            alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
+            return sorted(l, key=alphanum_key)
         #Search for all root files in path to signal
         path_root = Path(path_to_signal)
         forest = [root_file.as_posix() for root_file in path_root.glob('**/*.root')]
+        forest = natural_sort(forest)
         return forest
     
-    def _get_nevents(self,Forest):
+    
+    def get_nevents(self,Forest):
         #get total number of events in Forest
-        nevents=0
+        self.nevents=0
         for i,job in enumerate(Forest):
             tree=TChain("Delphes;1")
             tree.Add(job)
-            nevents+=tree.GetEntries()
-        return nevents
+            self.nevents+=tree.GetEntries()
+        return self.nevents
