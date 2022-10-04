@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-
+import os
 
 def prepare_features(data_dict,name='',channel="",features=[]):
     signal_feature=[]
@@ -33,6 +33,7 @@ def concat_channels(folder,signal_list,channels,features):
                 )
             except:
                 continue
+        
         return ch, _dict
     
     data_dict=dict(map(read_csv,channels))

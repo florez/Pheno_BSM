@@ -146,7 +146,8 @@ class LQ_Log_Reg(bcml_model):
             h.Scale(get_yield(self.path,[name],channel)/h.Integral())
             hist_dict[channel]=h
             hs.Add(h)
-        hs.Draw("HIST")
+        h.Draw("hist")
+        #hs.Draw()
         c1.SaveAs(os.path.join(os.getcwd(),images_folder,f"{name}.png"))
         return (name,hist_dict)
     
